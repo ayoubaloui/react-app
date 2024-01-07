@@ -1,84 +1,110 @@
-import { useEffect, useState } from 'react';
-import './App.css';
-import axios from 'axios'; // Import axios here
+// App.js
+import { useEffect, useReducer } from 'react';
+import styled from 'styled-components';
+import axios from 'axios';
+import appReducer from './appReducer'; 
 
+const Container = styled.div`
+  text-align: center;
+  padding: 20px;
+`;
+
+const Header = styled.h1`
+  color: #333;
+`;
+
+const Select = styled.select`
+  margin: 10px;
+  padding: 5px;
+`;
+
+const Button = styled.button`
+  margin: 10px;
+  padding: 8px 16px;
+  background-color: #007bff;
+  color: #fff;
+  cursor: pointer;
+`;
+
+const Result = styled.h3`
+  margin-top: 20px;
+  color: #333;
+`;
 
 function App() {
-  //states to store my data 
-  const [countries,setCountries] = useState([]); 
-  const [singleCountry, setsingleCountry] =useState();
-  const [cities, setCities] =useState([]);
-  const [singleCity, setSingleCity] =useState("");
-  const [submit,setSubmit] = useState(false);
+  const [state, dispatch] = useReducer(appReducer, {
+    countries: [],
+    singleCountry: null,
+    cities: [],
+    singleCity: "",
+    submit: false,
+  });
 
+  const { countries, singleCountry, cities, singleCity, submit } = state;
 
-  //i'm going to fetch an API so it must be async and await 
-  const fetchCountries = async() =>{
+  const fetchCountries = async () => {
     try {
-      const country=await axios.get("https://countriesnow.space/api/v0.1/countries"); 
-      setCountries(country.data.data);
+      const country = await axios.get("https://countriesnow.space/api/v0.1/countries");
+      dispatch({ type: "SET_COUNTRIES", payload: country.data.data });
     } catch (error) {
       console.log(error);
-      
     }
-  }
- 
-const fetchCities = (country)=> {
-  setSubmit(false);
-  setSingleCity(null);
-  setsingleCountry(country);
-  const findCities = countries.find((c) =>  c.country===country );
-  setCities(findCities.cities);
-};
+  };
 
-const submitHandle  = () => {
-  if(singleCountry && singleCity){
-    setSubmit(true);
+  const fetchCities = (country) => {
+    dispatch({ type: "SET_SUBMIT", payload: false });
+    dispatch({ type: "SET_SINGLE_CITY", payload: null });
+    dispatch({ type: "SET_SINGLE_COUNTRY", payload: country });
+    const findCities = countries.find((c) => c.country === country);
+    dispatch({ type: "SET_CITIES", payload: findCities.cities });
+  };
 
-  }
-}
-//useEffect don't allow to use an async function
-useEffect(() =>{
-  fetchCountries();
-}, []);
+  const submitHandle = () => {
+    if (singleCountry && singleCity) {
+      dispatch({ type: "SET_SUBMIT", payload: true });
+    }
+  };
 
-  return ( <div className='App'> 
-              <div className="App-header">  
-              <h1>  Select Your HomeTown</h1>
-              <div>
-              { countries && <select onChange={(e) => fetchCities(e.target.value)} value={singleCountry} >
-                  <option disabled selected hidden>
-                    Select Country
-                  </option>
-                  {
-                    countries.map((country) => (
-                       <option key={`${country.country}`} value={country.country} > {country.country} </option>
-                    ))}
-                  
-                 </select>  }
+  useEffect(() => {
+    fetchCountries();
+  }, []);
 
+  return (
+    <Container>
+      <Header>Select Your HomeTown</Header>
+      <div>
+        {countries && (
+          <Select onChange={(e) => fetchCities(e.target.value)} value={singleCountry}>
+            <option disabled selected hidden>
+              Select Country
+            </option>
+            {countries.map((country) => (
+              <option key={`${country.country}`} value={country.country}>
+                {country.country}
+              </option>
+            ))}
+          </Select>
+        )}
 
-                 { cities &&(
-                 <select onChange={(e)=>setSingleCity(e.target.value)} value={singleCity} >
-                  <option disabled selected hidden>
-                    Select City
-                  </option>
-                  {cities.map((city)=>(
-                    <option value={city} key={city}>  {city} </option>
+        {cities && (
+          <Select onChange={(e) => dispatch({ type: "SET_SINGLE_CITY", payload: e.target.value })} value={singleCity}>
+            <option disabled selected hidden>
+              Select City
+            </option>
+            {cities.map((city) => (
+              <option value={city} key={city}>
+                {city}
+              </option>
+            ))}
+          </Select>
+        )}
 
-                  ))}
-                 </select> )}
+        <Button onClick={submitHandle}>GO</Button>
+      </div>
 
-                 <button onClick={submitHandle} > GO </button>
-              </div>
-
-              { submit && (<h3> 
-                Your country is {singleCountry} and your city is {singleCity} 
-                 </h3> )}
-              
-              </div>   
-
-  </div> );
+      {submit && <Result>Your country is {singleCountry} and your city is {singleCity}</Result>}
+    </Container>
+  );
 }
 
 export default App;
